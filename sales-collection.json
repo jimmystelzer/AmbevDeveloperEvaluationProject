@@ -1,0 +1,795 @@
+{
+	"info": {
+		"_postman_id": "81734c0a-5e1d-4d17-9b82-c53bd7e78e97",
+		"name": "Ambev Developer Evaluation API - Sales",
+		"description": "Collection para testar todos os endpoints da API de vendas (Sales) da Ambev Developer Evaluation.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Autenticação",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"if (jsonData.data && jsonData.data.token) {",
+									"    pm.environment.set(\"auth_token\", jsonData.data.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@ambev.com\",\n    \"password\": \"P@ssw0rd123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Auth",
+								"login"
+							]
+						},
+						"description": "Endpoint para autenticação de usuários. Salva o token JWT na variável de ambiente auth_token."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints relacionados à autenticação e autorização."
+		},
+		{
+			"name": "Criação de Vendas",
+			"item": [
+				{
+					"name": "Criar Venda - Sucesso",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"if (jsonData.data && jsonData.data.id) {",
+									"    pm.environment.set(\"sale_id\", jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"{{$guid}}\",\n    \"customerName\": \"Cliente Exemplo\",\n    \"branchId\": \"{{$guid}}\",\n    \"branchName\": \"Loja Central\",\n    \"items\": [\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto A\",\n            \"quantity\": 5,\n            \"unitPrice\": 15.50\n        },\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto B\",\n            \"quantity\": 3,\n            \"unitPrice\": 25.00\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales"
+							]
+						},
+						"description": "Cria uma nova venda com dados válidos. O ID da venda é salvo automaticamente na variável sale_id para uso em outras requisições."
+					},
+					"response": []
+				},
+				{
+					"name": "Criar Venda - Cliente Inválido",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"00000000-0000-0000-0000-000000000000\",\n    \"customerName\": \"\",\n    \"branchId\": \"{{$guid}}\",\n    \"branchName\": \"Loja Central\",\n    \"items\": [\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto A\",\n            \"quantity\": 5,\n            \"unitPrice\": 15.50\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales"
+							]
+						},
+						"description": "Tenta criar uma venda com dados de cliente inválidos (customerName vazio)."
+					},
+					"response": []
+				},
+				{
+					"name": "Criar Venda - Filial Inválida",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"{{$guid}}\",\n    \"customerName\": \"Cliente Exemplo\",\n    \"branchId\": \"00000000-0000-0000-0000-000000000000\",\n    \"branchName\": \"\",\n    \"items\": [\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto A\",\n            \"quantity\": 5,\n            \"unitPrice\": 15.50\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales"
+							]
+						},
+						"description": "Tenta criar uma venda com dados de filial inválidos (branchName vazio)."
+					},
+					"response": []
+				},
+				{
+					"name": "Criar Venda - Sem Itens",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"{{$guid}}\",\n    \"customerName\": \"Cliente Exemplo\",\n    \"branchId\": \"{{$guid}}\",\n    \"branchName\": \"Loja Central\",\n    \"items\": []\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales"
+							]
+						},
+						"description": "Tenta criar uma venda sem itens, o que deve falhar na validação."
+					},
+					"response": []
+				},
+				{
+					"name": "Criar Venda - Quantidade Excedida",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"{{$guid}}\",\n    \"customerName\": \"Cliente Exemplo\",\n    \"branchId\": \"{{$guid}}\",\n    \"branchName\": \"Loja Central\",\n    \"items\": [\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto A\",\n            \"quantity\": 25,\n            \"unitPrice\": 15.50\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales"
+							]
+						},
+						"description": "Tenta criar uma venda com quantidade de itens acima do limite permitido (máximo é 20)."
+					},
+					"response": []
+				},
+				{
+					"name": "Criar Venda - Preço Negativo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"{{$guid}}\",\n    \"customerName\": \"Cliente Exemplo\",\n    \"branchId\": \"{{$guid}}\",\n    \"branchName\": \"Loja Central\",\n    \"items\": [\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto A\",\n            \"quantity\": 5,\n            \"unitPrice\": -10.00\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales"
+							]
+						},
+						"description": "Tenta criar uma venda com preço unitário negativo, o que deve falhar na validação."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para criação de vendas e seus possíveis cenários de erro."
+		},
+		{
+			"name": "Consulta de Vendas",
+			"item": [
+				{
+					"name": "Listar Vendas - Paginação Padrão",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/Sales",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales"
+							]
+						},
+						"description": "Lista as vendas utilizando a paginação padrão (página 1, 10 itens por página)."
+					},
+					"response": []
+				},
+				{
+					"name": "Listar Vendas - Paginação Personalizada",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/Sales?page=2&pageSize=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "2"
+								},
+								{
+									"key": "pageSize",
+									"value": "5"
+								}
+							]
+						},
+						"description": "Lista as vendas utilizando paginação personalizada (página 2, 5 itens por página)."
+					},
+					"response": []
+				},
+				{
+					"name": "Listar Vendas - Página Inválida",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/Sales?page=0&pageSize=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "pageSize",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Tenta listar vendas com número de página inválido (deve ser maior que 0)."
+					},
+					"response": []
+				},
+				{
+					"name": "Listar Vendas - Tamanho de Página Inválido",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/Sales?page=1&pageSize=150",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "150"
+								}
+							]
+						},
+						"description": "Tenta listar vendas com tamanho de página inválido (máximo é 100)."
+					},
+					"response": []
+				},
+				{
+					"name": "Obter Venda por ID - Sucesso",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/Sales/{{sale_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"{{sale_id}}"
+							]
+						},
+						"description": "Obtém os detalhes de uma venda específica pelo ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Obter Venda por ID - ID Inválido",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/Sales/invalid-id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"invalid-id"
+							]
+						},
+						"description": "Tenta obter uma venda usando um ID em formato inválido."
+					},
+					"response": []
+				},
+				{
+					"name": "Obter Venda por ID - Não Encontrada",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/Sales/00000000-0000-0000-0000-000000000000",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"00000000-0000-0000-0000-000000000000"
+							]
+						},
+						"description": "Tenta obter uma venda que não existe."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para consulta e listagem de vendas."
+		},
+		{
+			"name": "Atualização de Vendas",
+			"item": [
+				{
+					"name": "Atualizar Venda - Sucesso",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"{{$guid}}\",\n    \"customerName\": \"Cliente Atualizado\",\n    \"branchId\": \"{{$guid}}\",\n    \"branchName\": \"Loja Atualizada\",\n    \"items\": [\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto Atualizado\",\n            \"quantity\": 3,\n            \"unitPrice\": 22.50\n        },\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto Novo\",\n            \"quantity\": 1,\n            \"unitPrice\": 30.00\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales/{{sale_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"{{sale_id}}"
+							]
+						},
+						"description": "Atualiza uma venda existente com dados válidos."
+					},
+					"response": []
+				},
+				{
+					"name": "Atualizar Venda - ID Inválido",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"{{$guid}}\",\n    \"customerName\": \"Cliente Atualizado\",\n    \"branchId\": \"{{$guid}}\",\n    \"branchName\": \"Loja Atualizada\",\n    \"items\": [\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto Atualizado\",\n            \"quantity\": 3,\n            \"unitPrice\": 22.50\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales/invalid-id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"invalid-id"
+							]
+						},
+						"description": "Tenta atualizar uma venda com ID em formato inválido."
+					},
+					"response": []
+				},
+				{
+					"name": "Atualizar Venda - Não Encontrada",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"{{$guid}}\",\n    \"customerName\": \"Cliente Atualizado\",\n    \"branchId\": \"{{$guid}}\",\n    \"branchName\": \"Loja Atualizada\",\n    \"items\": [\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto Atualizado\",\n            \"quantity\": 3,\n            \"unitPrice\": 22.50\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales/00000000-0000-0000-0000-000000000000",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"00000000-0000-0000-0000-000000000000"
+							]
+						},
+						"description": "Tenta atualizar uma venda que não existe."
+					},
+					"response": []
+				},
+				{
+					"name": "Atualizar Venda - Cliente Inválido",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"00000000-0000-0000-0000-000000000000\",\n    \"customerName\": \"\",\n    \"branchId\": \"{{$guid}}\",\n    \"branchName\": \"Loja Atualizada\",\n    \"items\": [\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto Atualizado\",\n            \"quantity\": 3,\n            \"unitPrice\": 22.50\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales/{{sale_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"{{sale_id}}"
+							]
+						},
+						"description": "Tenta atualizar uma venda com dados de cliente inválidos (customerName vazio)."
+					},
+					"response": []
+				},
+				{
+					"name": "Atualizar Venda - Sem Itens",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"{{$guid}}\",\n    \"customerName\": \"Cliente Atualizado\",\n    \"branchId\": \"{{$guid}}\",\n    \"branchName\": \"Loja Atualizada\",\n    \"items\": []\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales/{{sale_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"{{sale_id}}"
+							]
+						},
+						"description": "Tenta atualizar uma venda sem itens, o que deve falhar na validação."
+					},
+					"response": []
+				},
+				{
+					"name": "Atualizar Venda - Quantidade Excedida",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoTimestamp}}\",\n    \"customerId\": \"{{$guid}}\",\n    \"customerName\": \"Cliente Atualizado\",\n    \"branchId\": \"{{$guid}}\",\n    \"branchName\": \"Loja Atualizada\",\n    \"items\": [\n        {\n            \"productId\": \"{{$guid}}\",\n            \"productName\": \"Produto Atualizado\",\n            \"quantity\": 25,\n            \"unitPrice\": 22.50\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Sales/{{sale_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"{{sale_id}}"
+							]
+						},
+						"description": "Tenta atualizar uma venda com quantidade de itens acima do limite permitido (máximo é 20)."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para atualização de vendas e seus possíveis cenários de erro."
+		},
+		{
+			"name": "Exclusão de Vendas",
+			"item": [
+				{
+					"name": "Deletar Venda - Sucesso",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/Sales/{{sale_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"{{sale_id}}"
+							]
+						},
+						"description": "Deleta (cancela) uma venda existente."
+					},
+					"response": []
+				},
+				{
+					"name": "Deletar Venda - ID Inválido",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/Sales/invalid-id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"invalid-id"
+							]
+						},
+						"description": "Tenta deletar uma venda com ID em formato inválido."
+					},
+					"response": []
+				},
+				{
+					"name": "Deletar Venda - Não Encontrada",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/Sales/00000000-0000-0000-0000-000000000000",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Sales",
+								"00000000-0000-0000-0000-000000000000"
+							]
+						},
+						"description": "Tenta deletar uma venda que não existe."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para exclusão de vendas e seus possíveis cenários de erro."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5119",
+			"type": "string"
+		},
+		{
+			"key": "sale_id",
+			"value": "00000000-0000-0000-0000-000000000000",
+			"type": "string"
+		}
+	]
+}
