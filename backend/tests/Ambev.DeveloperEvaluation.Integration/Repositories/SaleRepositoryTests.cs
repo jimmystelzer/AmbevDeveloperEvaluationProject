@@ -72,7 +72,7 @@ public class SaleRepositoryTests : IDisposable
 
         // Assert
         var updatedSale = await _context.Sales.FindAsync(sale.Id);
-        Assert.Equal(SaleStatus.Cancelled, updatedSale.Status);
+        Assert.Equal(SaleStatus.Cancelled, updatedSale?.Status);
     }
 
     [Fact(DisplayName = "DeleteAsync should remove sale from database")]

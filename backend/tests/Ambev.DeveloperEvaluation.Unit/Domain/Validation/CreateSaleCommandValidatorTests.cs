@@ -48,7 +48,7 @@ public class CreateSaleCommandValidatorTests
     {
         // Arrange
         var command = CreateSaleCommandTestData.GenerateValidCommand();
-        command.CustomerName = invalidName;
+        command.CustomerName = invalidName ?? string.Empty;
 
         // Act
         var result = _validator.TestValidate(command);
@@ -78,7 +78,7 @@ public class CreateSaleCommandValidatorTests
     {
         // Arrange
         var command = CreateSaleCommandTestData.GenerateValidCommand();
-        command.BranchName = invalidName;
+        command.BranchName = invalidName ?? string.Empty;
 
         // Act
         var result = _validator.TestValidate(command);

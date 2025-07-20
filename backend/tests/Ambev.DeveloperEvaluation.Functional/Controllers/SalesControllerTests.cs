@@ -64,7 +64,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     //     }
     // }
 
-    public void Dispose()
+    private void Dispose()
     {
         // Cleanup - delete all created sales
         using var scope = _serviceProvider.CreateScope();
@@ -545,7 +545,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         Assert.NotNull(responseData);
         Assert.True(responseData.Success);
         Assert.Equal(1, responseData.CurrentPage);
-        Assert.Equal(2, responseData.Data.Count());
+        Assert.Equal(2, responseData.Data?.Count());
         Assert.True(responseData.TotalCount >= 3);
     }
 
@@ -554,7 +554,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     // Helper class for auth response
     private class AuthResponse
     {
-        public string Token { get; set; }
+        public string? Token { get; set; }
         public DateTime ExpiresAt { get; set; }
     }
 }
