@@ -89,12 +89,7 @@ public class SalesController : BaseController
         {
             var result = await _mediator.Send(command, cancellationToken);
             
-            return Ok(new ApiResponseWithData<GetSaleResponse>
-            {
-                Success = true,
-                Message = "Sale retrieved successfully",
-                Data = _mapper.Map<GetSaleResponse>(result)
-            });
+            return Ok(_mapper.Map<GetSaleResponse>(result), "Sale retrieved successfully");
         }
         catch (KeyNotFoundException ex)
         {
