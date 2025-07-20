@@ -441,6 +441,31 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         Assert.True(responseData.TotalCount >= 3);
     }
 
+    [Fact(DisplayName = "LOAD /api/Sales should handle concurrent requests")]
+    public async Task SimpleLoadTest_ShouldHandleConcurrentRequests()
+    {
+        int concurrentUsers = 40;
+        var tasks = new List<Task>();
+
+        for (int i = 0; i < concurrentUsers; i++)
+        {
+            tasks.Add(Task.Run(async () =>
+            {
+                var request = _fixture.Build<CreateSaleRequest>()
+                    .With(x => x.Items, _fixture.Build<CreateSaleItemRequest>()
+                        .With(x => x.Quantity, _fixture.Create<int>() % 5 + 4)
+                        .CreateMany(2)
+                        .ToList()
+                    )
+                    .Create();
+
+                var response = await _client.PostAsJsonAsync("api/Sales", request);
+                response.EnsureSuccessStatusCode();
+            }));
+        }
+
+        await Task.WhenAll(tasks);
+    }
     #endregion
 
     // Helper class for auth response
