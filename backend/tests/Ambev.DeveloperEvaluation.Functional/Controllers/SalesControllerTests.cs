@@ -7,6 +7,7 @@ using Ambev.DeveloperEvaluation.WebApi.Features.Sales.CreateSale;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.GetSale;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.GetSales;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.UpdateSale;
+using AutoFixture;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +31,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true
     };
+    private readonly IFixture _fixture;
 
     public SalesControllerTests(CustomWebApplicationFactory<Program> factory)
     {
@@ -39,7 +41,9 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
             AllowAutoRedirect = false
         });
         _serviceProvider = _factory.Services;
-        
+
+        _fixture = new Fixture();
+
         // Configure auth token
         // SetupAuthentication().Wait();
     }
@@ -64,7 +68,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     //     }
     // }
 
-    private void Dispose()
+    private async Task DisposeAsync()
     {
         // Cleanup - delete all created sales
         using var scope = _serviceProvider.CreateScope();
@@ -79,44 +83,25 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
                 dbContext.Sales.Remove(sale);
             }
         }
-        
-        dbContext.SaveChanges();
+
+        await dbContext.SaveChangesAsync();
     }
 
-    private async Task<Guid> CreateTestSale()
+    private async Task<Guid> CreateTestSaleAsync(string? customerName = null, string? branchName = null)
     {
-        var request = new CreateSaleRequest
-        {
-            Date = DateTime.UtcNow,
-            CustomerId = Guid.NewGuid(),
-            CustomerName = "Test Customer",
-            BranchId = Guid.NewGuid(),
-            BranchName = "Test Branch",
-            Items = new List<CreateSaleItemRequest>
-            {
-                new()
-                {
-                    ProductId = Guid.NewGuid(),
-                    ProductName = "Product A",
-                    Quantity = 5,
-                    UnitPrice = 100.00m
-                },
-                new()
-                {
-                    ProductId = Guid.NewGuid(),
-                    ProductName = "Product B",
-                    Quantity = 12,
-                    UnitPrice = 75.00m
-                }
-            }
-        };
+        var requestSaleItens = _fixture.Build<CreateSaleItemRequest>()
+            .With(x => x.Quantity, _fixture.Create<int>() % 5 + 4)
+            .CreateMany(2)
+            .ToList();
+            
+        var request = _fixture.Build<CreateSaleRequest>()
+            .With(x => x.CustomerName, customerName ?? _fixture.Create<string>())
+            .With(x => x.BranchName, branchName ?? _fixture.Create<string>())
+            .With(x => x.Items, requestSaleItens)
+            .Create();
+        
+        var response = await _client.PostAsJsonAsync("api/Sales", request);
 
-        var content = new StringContent(
-            JsonSerializer.Serialize(request, _jsonOptions),
-            Encoding.UTF8,
-            "application/json");
-
-        var response = await _client.PostAsync("api/Sales", content);
         response.EnsureSuccessStatusCode();
         
         var responseData = await response.Content.ReadFromJsonAsync<ApiResponseWithData<CreateSaleResponse>>();
@@ -126,7 +111,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         var saleId = responseData.Data.Id;
         _createdSaleIds.Add(saleId);
         
-        return saleId;
+        return responseData.Data.Id;
     }
 
     #region Tests
@@ -135,32 +120,18 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     public async Task CreateSale_ShouldCreateNewSale()
     {
         // Arrange
-        var request = new CreateSaleRequest
-        {
-            Date = DateTime.UtcNow,
-            CustomerId = Guid.NewGuid(),
-            CustomerName = "New Customer",
-            BranchId = Guid.NewGuid(),
-            BranchName = "New Branch",
-            Items = new List<CreateSaleItemRequest>
-            {
-                new()
-                {
-                    ProductId = Guid.NewGuid(),
-                    ProductName = "Test Product",
-                    Quantity = 5,
-                    UnitPrice = 100.00m
-                }
-            }
-        };
-
-        var content = new StringContent(
-            JsonSerializer.Serialize(request, _jsonOptions),
-            Encoding.UTF8,
-            "application/json");
-
+        var requestSaleItens = _fixture.Build<CreateSaleItemRequest>()
+            .With(x => x.Quantity, _fixture.Create<int>() % 5 + 4)
+            .With(x => x.UnitPrice, _fixture.Create<decimal>() % 100 + 1)
+            .CreateMany(2)
+            .ToList();
+            
+        var request = _fixture.Build<CreateSaleRequest>()
+            .With(x => x.Items, requestSaleItens)
+            .Create();
+        
         // Act
-        var response = await _client.PostAsync("api/Sales", content);
+        var response = await _client.PostAsJsonAsync("api/Sales", request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -188,32 +159,18 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     public async Task CreateSale_ShouldApply10PercentDiscount_For4To9Items()
     {
         // Arrange
-        var request = new CreateSaleRequest
-        {
-            Date = DateTime.UtcNow,
-            CustomerId = Guid.NewGuid(),
-            CustomerName = "Discount Test Customer",
-            BranchId = Guid.NewGuid(),
-            BranchName = "Discount Test Branch",
-            Items = new List<CreateSaleItemRequest>
-            {
-                new()
-                {
-                    ProductId = Guid.NewGuid(),
-                    ProductName = "Discount Test Product",
-                    Quantity = 5,
-                    UnitPrice = 100.00m
-                }
-            }
-        };
-
-        var content = new StringContent(
-            JsonSerializer.Serialize(request, _jsonOptions),
-            Encoding.UTF8,
-            "application/json");
-
+        var requestSaleItens = _fixture.Build<CreateSaleItemRequest>()
+            .With(x => x.Quantity, 5)
+            .With(x => x.UnitPrice, _fixture.Create<decimal>() % 100 + 1)
+            .CreateMany(1)
+            .ToList();
+            
+        var request = _fixture.Build<CreateSaleRequest>()
+            .With(x => x.Items, requestSaleItens)
+            .Create();
+        
         // Act
-        var response = await _client.PostAsync("api/Sales", content);
+        var response = await _client.PostAsJsonAsync("api/Sales", request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -238,33 +195,19 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     public async Task CreateSale_ShouldApply20PercentDiscount_For10To20Items()
     {
         // Arrange
-        var request = new CreateSaleRequest
-        {
-            Date = DateTime.UtcNow,
-            CustomerId = Guid.NewGuid(),
-            CustomerName = "Discount Test Customer",
-            BranchId = Guid.NewGuid(),
-            BranchName = "Discount Test Branch",
-            Items = new List<CreateSaleItemRequest>
-            {
-                new()
-                {
-                    ProductId = Guid.NewGuid(),
-                    ProductName = "Discount Test Product",
-                    Quantity = 15,
-                    UnitPrice = 100.00m
-                }
-            }
-        };
-
-        var content = new StringContent(
-            JsonSerializer.Serialize(request, _jsonOptions),
-            Encoding.UTF8,
-            "application/json");
-
+        var requestSaleItens = _fixture.Build<CreateSaleItemRequest>()
+            .With(x => x.Quantity, 15)
+            .With(x => x.UnitPrice, _fixture.Create<decimal>() % 100 + 1)
+            .CreateMany(1)
+            .ToList();
+            
+        var request = _fixture.Build<CreateSaleRequest>()
+            .With(x => x.Items, requestSaleItens)
+            .Create();
+        
         // Act
-        var response = await _client.PostAsync("api/Sales", content);
-
+        var response = await _client.PostAsJsonAsync("api/Sales", request);
+        
         // Assert
         response.EnsureSuccessStatusCode();
         
@@ -288,32 +231,18 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     public async Task CreateSale_ShouldNotApplyDiscount_ForFewerThan4Items()
     {
         // Arrange
-        var request = new CreateSaleRequest
-        {
-            Date = DateTime.UtcNow,
-            CustomerId = Guid.NewGuid(),
-            CustomerName = "No Discount Customer",
-            BranchId = Guid.NewGuid(),
-            BranchName = "No Discount Branch",
-            Items = new List<CreateSaleItemRequest>
-            {
-                new()
-                {
-                    ProductId = Guid.NewGuid(),
-                    ProductName = "No Discount Product",
-                    Quantity = 3,
-                    UnitPrice = 100.00m
-                }
-            }
-        };
-
-        var content = new StringContent(
-            JsonSerializer.Serialize(request, _jsonOptions),
-            Encoding.UTF8,
-            "application/json");
-
+        var requestSaleItens = _fixture.Build<CreateSaleItemRequest>()
+            .With(x => x.Quantity, 3)
+            .With(x => x.UnitPrice, _fixture.Create<decimal>() % 100 + 1)
+            .CreateMany(1)
+            .ToList();
+            
+        var request = _fixture.Build<CreateSaleRequest>()
+            .With(x => x.Items, requestSaleItens)
+            .Create();
+        
         // Act
-        var response = await _client.PostAsync("api/Sales", content);
+        var response = await _client.PostAsJsonAsync("api/Sales", request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -333,32 +262,17 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     public async Task CreateSale_ShouldRejectRequest_WithMoreThan20Items()
     {
         // Arrange
-        var request = new CreateSaleRequest
-        {
-            Date = DateTime.UtcNow,
-            CustomerId = Guid.NewGuid(),
-            CustomerName = "Too Many Items Customer",
-            BranchId = Guid.NewGuid(),
-            BranchName = "Too Many Items Branch",
-            Items = new List<CreateSaleItemRequest>
-            {
-                new()
-                {
-                    ProductId = Guid.NewGuid(),
-                    ProductName = "Too Many Items Product",
-                    Quantity = 21,  // Exceeds maximum of 20
-                    UnitPrice = 100.00m
-                }
-            }
-        };
-
-        var content = new StringContent(
-            JsonSerializer.Serialize(request, _jsonOptions),
-            Encoding.UTF8,
-            "application/json");
-
+        var requestSaleItens = _fixture.Build<CreateSaleItemRequest>()
+            .With(x => x.Quantity, _fixture.Create<int>() % 5 + 21)
+            .CreateMany(1)
+            .ToList();
+            
+        var request = _fixture.Build<CreateSaleRequest>()
+            .With(x => x.Items, requestSaleItens)
+            .Create();
+        
         // Act
-        var response = await _client.PostAsync("api/Sales", content);
+        var response = await _client.PostAsJsonAsync("api/Sales", request);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -367,8 +281,9 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     [Fact(DisplayName = "GET /api/Sales/{id} should return a sale")]
     public async Task GetSale_ShouldReturnSale()
     {
+        
         // Arrange - Create a sale to retrieve
-        var saleId = await CreateTestSale();
+        var saleId = await CreateTestSaleAsync("Test Customer", "Test Branch");
 
         // Act
         var response = await _client.GetAsync($"api/Sales/{saleId}");
@@ -384,8 +299,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         Assert.Equal("Test Customer", responseData.Data.CustomerName);
         Assert.Equal("Test Branch", responseData.Data.BranchName);
         Assert.Equal(2, responseData.Data.Items.Count);
-        Assert.Contains(responseData.Data.Items, i => i.ProductName == "Product A");
-        Assert.Contains(responseData.Data.Items, i => i.ProductName == "Product B");
+        Assert.Contains(responseData.Data.Items, i => i.ProductName.StartsWith("ProductName"));
     }
 
     [Fact(DisplayName = "GET /api/Sales/{id} should return 404 for non-existent sale")]
@@ -402,35 +316,23 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     public async Task UpdateSale_ShouldUpdateSale()
     {
         // Arrange - Create a sale to update
-        var saleId = await CreateTestSale();
-        
-        var request = new UpdateSaleRequest
-        {
-            Id = saleId,
-            Date = DateTime.UtcNow,
-            CustomerId = Guid.NewGuid(),
-            CustomerName = "Updated Customer",
-            BranchId = Guid.NewGuid(),
-            BranchName = "Updated Branch",
-            Items = new List<UpdateSaleItemRequest>
-            {
-                new()
-                {
-                    ProductId = Guid.NewGuid(),
-                    ProductName = "Updated Product",
-                    Quantity = 10,
-                    UnitPrice = 50.00m
-                }
-            }
-        };
+        var saleId = await CreateTestSaleAsync();
 
-        var content = new StringContent(
-            JsonSerializer.Serialize(request, _jsonOptions),
-            Encoding.UTF8,
-            "application/json");
+        var requestSaleItens = _fixture.Build<UpdateSaleItemRequest>()
+            .With(x => x.Quantity, 10)
+            .With(x => x.UnitPrice, 50.00m)
+            .With(x => x.ProductName, "Updated Product")
+            .CreateMany(1)
+            .ToList();
+
+        var request = _fixture.Build<UpdateSaleRequest>()
+            .With(x => x.CustomerName, "Updated Customer")
+            .With(x => x.BranchName, "Updated Branch")
+            .With(x => x.Items, requestSaleItens)
+            .Create();
 
         // Act
-        var response = await _client.PutAsync($"api/Sales/{saleId}", content);
+        var response = await _client.PutAsJsonAsync($"api/Sales/{saleId}", request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -455,25 +357,15 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     {
         // Arrange
         var nonExistentId = Guid.NewGuid();
-        var request = new UpdateSaleRequest
-        {
-            Id = nonExistentId,
-            Date = DateTime.UtcNow,
-            CustomerId = Guid.NewGuid(),
-            CustomerName = "Updated Customer",
-            BranchId = Guid.NewGuid(),
-            BranchName = "Updated Branch",
-            Items = new List<UpdateSaleItemRequest>
-            {
-                new()
-                {
-                    ProductId = Guid.NewGuid(),
-                    ProductName = "Updated Product",
-                    Quantity = 5,
-                    UnitPrice = 100.00m
-                }
-            }
-        };
+        var requestSaleItens = _fixture.Build<UpdateSaleItemRequest>()
+            .With(x => x.Quantity, _fixture.Create<int>() % 5 + 4)
+            .CreateMany(2)
+            .ToList();
+            
+        var request = _fixture.Build<UpdateSaleRequest>()
+            .With(x => x.Id, nonExistentId)
+            .With(x => x.Items, requestSaleItens)
+            .Create();
 
         var content = new StringContent(
             JsonSerializer.Serialize(request, _jsonOptions),
@@ -491,7 +383,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     public async Task DeleteSale_ShouldCancelSale()
     {
         // Arrange - Create a sale to delete
-        var saleId = await CreateTestSale();
+        var saleId = await CreateTestSaleAsync();
 
         // Act
         var response = await _client.DeleteAsync($"api/Sales/{saleId}");
@@ -528,7 +420,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         // Arrange - Create several sales
         for (int i = 0; i < 3; i++)
         {
-            await CreateTestSale();
+            await CreateTestSaleAsync();
         }
 
         // Act
