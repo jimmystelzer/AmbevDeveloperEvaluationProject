@@ -167,7 +167,12 @@ public class SalesController : BaseController
         
         try
         {
-            await _mediator.Send(command, cancellationToken);
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (!result)
+            {
+                throw new KeyNotFoundException("Sale not found or already deleted");
+            }
             
             return Ok(new ApiResponse
             {
