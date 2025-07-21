@@ -18,11 +18,17 @@ using Xunit;
 using NBomber.Contracts;
 using NBomber.CSharp;
 using NBomber.Http.CSharp;
+using System.Net.Http.Headers;
+using Ambev.DeveloperEvaluation.Domain.Entities;
+using Ambev.DeveloperEvaluation.WebApi.Features.Users.CreateUser;
+using Ambev.DeveloperEvaluation.WebApi.Features.Auth.AuthenticateUserFeature;
 
 namespace Ambev.DeveloperEvaluation.Functional.Controllers;
 
 public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Program>>
 {
+    private const string email = "admin@ambev.com";
+    private const string password = "P@ssw0rd123";
     private readonly CustomWebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
     private readonly IServiceProvider _serviceProvider;
@@ -46,35 +52,50 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         _fixture = new Fixture();
 
         // Configure auth token
-        // SetupAuthentication().Wait();
+        SetupUserAuthentication().Wait();
+        SetupAuthentication().Wait();
     }
 
-    // private async Task SetupAuthentication()
-    // {
-    //     // Login to get token
-    //     var loginResponse = await _client.PostAsJsonAsync("api/auth/login", new
-    //     {
-    //         Email = "admin@ambev.com",
-    //         Password = "P@ssw0rd123"
-    //     });
+    private async Task SetupUserAuthentication()
+    {
+        // Ensure the database is seeded with a user
+        var request = _fixture.Build<CreateUserRequest>()
+            .With(u => u.Email, email)
+            .With(u => u.Password, password)
+            .With(u => u.Role, UserRole.Admin)
+            .With(u => u.Status, UserStatus.Active)
+            .With(u => u.Username, "Admin User")
+            .With(u => u.Phone, "10912345678")
+            .Create();
 
-    //     if (loginResponse.IsSuccessStatusCode)
-    //     {
-    //         var authResponse = await loginResponse.Content.ReadFromJsonAsync<ApiResponseWithData<AuthResponse>>();
-    //         if (authResponse != null && authResponse.Data != null)
-    //         {
-    //             _client.DefaultRequestHeaders.Authorization = 
-    //                 new AuthenticationHeaderValue("Bearer", authResponse.Data.Token);
-    //         }
-    //     }
-    // }
+        var response = await _client.PostAsJsonAsync("api/Users", request);
+    }
+    private async Task SetupAuthentication()
+    {
+        var request = _fixture.Build<AuthenticateUserRequest>()
+            .With(u => u.Email, email)
+            .With(u => u.Password, password)
+            .Create();
+
+        // Login to get token
+        var loginResponse = await _client.PostAsJsonAsync("api/auth", request);
+        if (loginResponse.IsSuccessStatusCode)
+        {
+            var authResponse = await loginResponse.Content.ReadFromJsonAsync<ApiResponseWithData<AuthResponse>>();
+            if (authResponse != null && authResponse.Data != null)
+            {
+                _client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", authResponse.Data.Token);
+            }
+        }
+    }
 
     private async Task DisposeAsync()
     {
         // Cleanup - delete all created sales
         using var scope = _serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<DefaultContext>();
-        
+
         foreach (var saleId in _createdSaleIds)
         {
             var sale = dbContext.Sales.Include(s => s.Items).FirstOrDefault(s => s.Id == saleId);
@@ -94,24 +115,24 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
             .With(x => x.Quantity, _fixture.Create<int>() % 5 + 4)
             .CreateMany(2)
             .ToList();
-            
+
         var request = _fixture.Build<CreateSaleRequest>()
             .With(x => x.CustomerName, customerName ?? _fixture.Create<string>())
             .With(x => x.BranchName, branchName ?? _fixture.Create<string>())
             .With(x => x.Items, requestSaleItens)
             .Create();
-        
+
         var response = await _client.PostAsJsonAsync("api/Sales", request);
 
         response.EnsureSuccessStatusCode();
-        
+
         var responseData = await response.Content.ReadFromJsonAsync<ApiResponseWithData<CreateSaleResponse>>();
         Assert.NotNull(responseData);
         Assert.NotNull(responseData.Data);
-        
+
         var saleId = responseData.Data.Id;
         _createdSaleIds.Add(saleId);
-        
+
         return responseData.Data.Id;
     }
 
@@ -126,18 +147,18 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
             .With(x => x.UnitPrice, _fixture.Create<decimal>() % 100 + 1)
             .CreateMany(2)
             .ToList();
-            
+
         var request = _fixture.Build<CreateSaleRequest>()
             .With(x => x.Items, requestSaleItens)
             .Create();
-        
+
         // Act
         var response = await _client.PostAsJsonAsync("api/Sales", request);
 
         // Assert
         response.EnsureSuccessStatusCode();
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        
+
         var responseData = await response.Content.ReadFromJsonAsync<ApiResponseWithData<CreateSaleResponse>>();
         Assert.NotNull(responseData);
         Assert.True(responseData.Success);
@@ -151,7 +172,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         // Verify discount was applied (10% for 5 items)
         var expectedDiscount = request.Items[0].Quantity * request.Items[0].UnitPrice * 0.1m;
         Assert.Equal(expectedDiscount, responseData.Data.Items[0].Discount);
-        
+
         // Save ID for cleanup
         _createdSaleIds.Add(responseData.Data.Id);
     }
@@ -165,17 +186,17 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
             .With(x => x.UnitPrice, _fixture.Create<decimal>() % 100 + 1)
             .CreateMany(1)
             .ToList();
-            
+
         var request = _fixture.Build<CreateSaleRequest>()
             .With(x => x.Items, requestSaleItens)
             .Create();
-        
+
         // Act
         var response = await _client.PostAsJsonAsync("api/Sales", request);
 
         // Assert
         response.EnsureSuccessStatusCode();
-        
+
         var responseData = await response.Content.ReadFromJsonAsync<ApiResponseWithData<CreateSaleResponse>>();
         Assert.NotNull(responseData);
         Assert.NotNull(responseData.Data);
@@ -183,11 +204,11 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         // Verify 10% discount was applied
         var expectedDiscount = request.Items[0].Quantity * request.Items[0].UnitPrice * 0.1m;
         Assert.Equal(expectedDiscount, responseData.Data.Items[0].Discount);
-        
+
         // Verify total amount is correct (item cost - discount)
         var expectedTotal = (request.Items[0].Quantity * request.Items[0].UnitPrice) - expectedDiscount;
         Assert.Equal(expectedTotal, responseData.Data.Items[0].TotalAmount);
-        
+
         // Save ID for cleanup
         _createdSaleIds.Add(responseData.Data.Id);
     }
@@ -201,17 +222,17 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
             .With(x => x.UnitPrice, _fixture.Create<decimal>() % 100 + 1)
             .CreateMany(1)
             .ToList();
-            
+
         var request = _fixture.Build<CreateSaleRequest>()
             .With(x => x.Items, requestSaleItens)
             .Create();
-        
+
         // Act
         var response = await _client.PostAsJsonAsync("api/Sales", request);
-        
+
         // Assert
         response.EnsureSuccessStatusCode();
-        
+
         var responseData = await response.Content.ReadFromJsonAsync<ApiResponseWithData<CreateSaleResponse>>();
         Assert.NotNull(responseData);
         Assert.NotNull(responseData.Data);
@@ -219,11 +240,11 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         // Verify 20% discount was applied
         var expectedDiscount = request.Items[0].Quantity * request.Items[0].UnitPrice * 0.2m;
         Assert.Equal(expectedDiscount, responseData.Data.Items[0].Discount);
-        
+
         // Verify total amount is correct (item cost - discount)
         var expectedTotal = (request.Items[0].Quantity * request.Items[0].UnitPrice) - expectedDiscount;
         Assert.Equal(expectedTotal, responseData.Data.Items[0].TotalAmount);
-        
+
         // Save ID for cleanup
         _createdSaleIds.Add(responseData.Data.Id);
     }
@@ -237,24 +258,24 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
             .With(x => x.UnitPrice, _fixture.Create<decimal>() % 100 + 1)
             .CreateMany(1)
             .ToList();
-            
+
         var request = _fixture.Build<CreateSaleRequest>()
             .With(x => x.Items, requestSaleItens)
             .Create();
-        
+
         // Act
         var response = await _client.PostAsJsonAsync("api/Sales", request);
 
         // Assert
         response.EnsureSuccessStatusCode();
-        
+
         var responseData = await response.Content.ReadFromJsonAsync<ApiResponseWithData<CreateSaleResponse>>();
         Assert.NotNull(responseData);
         Assert.NotNull(responseData.Data);
 
         // Verify no discount was applied
         Assert.Equal(0, responseData.Data.Items[0].Discount);
-        
+
         // Save ID for cleanup
         _createdSaleIds.Add(responseData.Data.Id);
     }
@@ -267,11 +288,11 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
             .With(x => x.Quantity, _fixture.Create<int>() % 5 + 21)
             .CreateMany(1)
             .ToList();
-            
+
         var request = _fixture.Build<CreateSaleRequest>()
             .With(x => x.Items, requestSaleItens)
             .Create();
-        
+
         // Act
         var response = await _client.PostAsJsonAsync("api/Sales", request);
 
@@ -282,7 +303,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
     [Fact(DisplayName = "GET /api/Sales/{id} should return a sale")]
     public async Task GetSale_ShouldReturnSale()
     {
-        
+
         // Arrange - Create a sale to retrieve
         var saleId = await CreateTestSaleAsync("Test Customer", "Test Branch");
 
@@ -292,7 +313,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         // Assert
         response.EnsureSuccessStatusCode();
         var responseData = await response.Content.ReadFromJsonAsync<ApiResponseWithData<GetSaleResponse>>();
-        
+
         Assert.NotNull(responseData);
         Assert.True(responseData.Success);
         Assert.NotNull(responseData.Data);
@@ -338,7 +359,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         // Assert
         response.EnsureSuccessStatusCode();
         var responseData = await response.Content.ReadFromJsonAsync<ApiResponseWithData<UpdateSaleResponse>>();
-        
+
         Assert.NotNull(responseData);
         Assert.True(responseData.Success);
         Assert.NotNull(responseData.Data);
@@ -347,7 +368,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         Assert.Equal("Updated Branch", responseData.Data.BranchName);
         Assert.Single(responseData.Data.Items);
         Assert.Equal("Updated Product", responseData.Data.Items[0].ProductName);
-        
+
         // Verify 20% discount was applied for 10 items
         var expectedDiscount = 10 * 50.00m * 0.2m;
         Assert.Equal(expectedDiscount, responseData.Data.Items[0].Discount);
@@ -362,7 +383,7 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
             .With(x => x.Quantity, _fixture.Create<int>() % 5 + 4)
             .CreateMany(2)
             .ToList();
-            
+
         var request = _fixture.Build<UpdateSaleRequest>()
             .With(x => x.Id, nonExistentId)
             .With(x => x.Items, requestSaleItens)
@@ -392,15 +413,15 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         // Assert
         response.EnsureSuccessStatusCode();
         var responseData = await response.Content.ReadFromJsonAsync<ApiResponse>();
-        
+
         Assert.NotNull(responseData);
         Assert.True(responseData.Success);
-        
+
         // Verify the sale status is now Cancelled
         using var scope = _serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<DefaultContext>();
         var sale = await dbContext.Sales.FindAsync(saleId);
-        
+
         Assert.NotNull(sale);
         Assert.Equal(SaleStatus.Cancelled, sale.Status);
     }
@@ -431,10 +452,10 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         response.EnsureSuccessStatusCode();
         var responseContent = await response.Content.ReadAsStringAsync();
         var responseData = JsonSerializer.Deserialize<PaginatedResponse<GetSalesItemResponse>>(
-            responseContent, 
+            responseContent,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
         );
-        
+
         Assert.NotNull(responseData);
         Assert.True(responseData.Success);
         Assert.Equal(1, responseData.CurrentPage);

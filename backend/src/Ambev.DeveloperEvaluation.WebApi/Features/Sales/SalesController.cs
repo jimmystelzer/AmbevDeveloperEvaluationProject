@@ -12,19 +12,21 @@ using Ambev.DeveloperEvaluation.Application.Sales.GetSale;
 using Ambev.DeveloperEvaluation.Application.Sales.UpdateSale;
 using Ambev.DeveloperEvaluation.Application.Sales.DeleteSale;
 using Ambev.DeveloperEvaluation.Application.Sales.GetSales;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Ambev.DeveloperEvaluation.WebApi.Features.Sales;
 
 /// <summary>
 /// Controller for managing sales operations
 /// </summary>
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class SalesController : BaseController
 {
     private readonly IMediator _mediator;
     private readonly IMapper _mapper;
-    
+
     /// <summary>
     /// Initializes a new instance of SalesController
     /// </summary>
@@ -35,7 +37,7 @@ public class SalesController : BaseController
         _mediator = mediator;
         _mapper = mapper;
     }
-    
+
     /// <summary>
     /// Creates a new sale
     /// </summary>
@@ -45,17 +47,18 @@ public class SalesController : BaseController
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponseWithData<CreateSaleResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateSale([FromBody] CreateSaleRequest request, CancellationToken cancellationToken)
     {
         var validator = new CreateSaleRequestValidator();
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
-        
+
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
-            
+
         var command = _mapper.Map<CreateSaleCommand>(request);
         var result = await _mediator.Send(command, cancellationToken);
-        
+
         return Created(string.Empty, new ApiResponseWithData<CreateSaleResponse>
         {
             Success = true,
@@ -63,7 +66,7 @@ public class SalesController : BaseController
             Data = _mapper.Map<CreateSaleResponse>(result)
         });
     }
-    
+
     /// <summary>
     /// Retrieves a sale by its ID
     /// </summary>
@@ -73,22 +76,23 @@ public class SalesController : BaseController
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ApiResponseWithData<GetSaleResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetSale([FromRoute] Guid id, CancellationToken cancellationToken)
     {
         var request = new GetSaleRequest { Id = id };
         var validator = new GetSaleRequestValidator();
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
-        
+
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
-            
+
         var command = new GetSaleCommand(id);
-        
+
         try
         {
             var result = await _mediator.Send(command, cancellationToken);
-            
+
             return Ok(_mapper.Map<GetSaleResponse>(result), "Sale retrieved successfully");
         }
         catch (KeyNotFoundException ex)
@@ -100,7 +104,7 @@ public class SalesController : BaseController
             });
         }
     }
-    
+
     /// <summary>
     /// Updates an existing sale
     /// </summary>
@@ -111,22 +115,23 @@ public class SalesController : BaseController
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(ApiResponseWithData<UpdateSaleResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateSale([FromRoute] Guid id, [FromBody] UpdateSaleRequest request, CancellationToken cancellationToken)
     {
         request.Id = id;
         var validator = new UpdateSaleRequestValidator();
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
-        
+
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
-            
+
         var command = _mapper.Map<UpdateSaleCommand>(request);
-        
+
         try
         {
             var result = await _mediator.Send(command, cancellationToken);
-            
+
             return Ok(new ApiResponseWithData<UpdateSaleResponse>
             {
                 Success = true,
@@ -143,7 +148,7 @@ public class SalesController : BaseController
             });
         }
     }
-    
+
     /// <summary>
     /// Deletes a sale by its ID
     /// </summary>
@@ -153,18 +158,19 @@ public class SalesController : BaseController
     [HttpDelete("{id}")]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteSale([FromRoute] Guid id, CancellationToken cancellationToken)
     {
         var request = new DeleteSaleRequest { Id = id };
         var validator = new DeleteSaleRequestValidator();
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
-        
+
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
-            
+
         var command = new DeleteSaleCommand(id);
-        
+
         try
         {
             var result = await _mediator.Send(command, cancellationToken);
@@ -173,7 +179,7 @@ public class SalesController : BaseController
             {
                 throw new KeyNotFoundException("Sale not found or already deleted");
             }
-            
+
             return Ok(new ApiResponse
             {
                 Success = true,
@@ -189,7 +195,7 @@ public class SalesController : BaseController
             });
         }
     }
-    
+
     /// <summary>
     /// Retrieves a paginated list of sales
     /// </summary>
@@ -199,6 +205,7 @@ public class SalesController : BaseController
     /// <returns>A paginated list of sales</returns>
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResponse<GetSalesItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetSales(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
@@ -206,20 +213,20 @@ public class SalesController : BaseController
     {
         var validator = new GetSalesRequestValidator();
         var validationResult = await validator.ValidateAsync(new GetSalesRequest { Page = page, PageSize = pageSize }, cancellationToken);
-        
+
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
-            
+
         var command = new GetSalesCommand(page, pageSize);
         var result = await _mediator.Send(command, cancellationToken);
-        
+
         var pagedList = new PaginatedList<GetSalesItemResponse>(
             _mapper.Map<List<GetSalesItemResponse>>(result.Sales),
             result.TotalCount,
             page,
             pageSize
         );
-        
+
         return OkPaginated(pagedList);
     }
 }

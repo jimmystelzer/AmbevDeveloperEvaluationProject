@@ -44,7 +44,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         {
             throw new ArgumentNullException(nameof(secretKey), "JWT secret key is not configured.");
         }
-        
+
         var key = Encoding.ASCII.GetBytes(secretKey);
 
         var claims = new[]
@@ -58,6 +58,8 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         {
             Subject = new ClaimsIdentity(claims),
             Expires = DateTime.UtcNow.AddHours(8),
+            Audience = _configuration["Jwt:Audience"],
+            Issuer = _configuration["Jwt:Issuer"],
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha256Signature)
