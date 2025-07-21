@@ -9,6 +9,7 @@ using Ambev.DeveloperEvaluation.WebApi.Middleware;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using ConfigurationManager = Ambev.DeveloperEvaluation.Common.ConfigurationManager;
 
 namespace Ambev.DeveloperEvaluation.WebApi;
 
@@ -31,7 +32,7 @@ public class Program
 
             builder.Services.AddDbContext<DefaultContext>(options =>
                 options.UseNpgsql(
-                    "Server=ambev.developerevaluation.database;Database=developer_evaluation;User Id=developer;Password=ev@luAt10n;Port=5432;TrustServerCertificate=True",
+                    ConfigurationManager.AppSetting.GetConnectionString("DefaultConnection"),
                     b => b.MigrationsAssembly("Ambev.DeveloperEvaluation.ORM")
                 )
             );
