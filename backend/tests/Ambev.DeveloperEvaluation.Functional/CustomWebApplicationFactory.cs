@@ -1,6 +1,10 @@
+using System.Threading.RateLimiting;
 using Ambev.DeveloperEvaluation.ORM;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +36,26 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
             }
 
             services.AddDistributedMemoryCache();
+
+            var rateLimiterDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(RateLimiterOptions));
+            if (rateLimiterDescriptor != null)
+            {
+                services.Remove(rateLimiterDescriptor);
+            }
+
+            services.AddRateLimiter(options =>
+            {
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: httpContext.Request.Headers.Host.ToString(),
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 100000,
+                            Window = TimeSpan.FromSeconds(1),
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 100000
+                        }));
+            });
 
             var serviceProvider = services.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();

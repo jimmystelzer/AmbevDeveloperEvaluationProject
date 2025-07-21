@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Ambev.DeveloperEvaluation.Application;
 using Ambev.DeveloperEvaluation.Common.HealthChecks;
 using Ambev.DeveloperEvaluation.Common.Logging;
@@ -62,6 +63,20 @@ public class Program
                 )
             );
 
+            builder.Services.AddRateLimiter(options =>
+            {
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: httpContext.Request.Headers.Host.ToString(),
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = ConfigurationManager.AppSetting.GetValue<int>("RateLimiting:PermitLimit"),
+                            Window = TimeSpan.FromSeconds(ConfigurationManager.AppSetting.GetValue<int>("RateLimiting:Window")),
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = ConfigurationManager.AppSetting.GetValue<int>("RateLimiting:QueueLimit")
+                        }));
+            });
+
             builder.Services.AddJwtAuthentication(builder.Configuration);
 
             builder.RegisterDependencies();
@@ -96,6 +111,8 @@ public class Program
             app.UseAuthorization();
 
             app.UseBasicHealthChecks();
+
+            app.UseRateLimiter();
 
             app.MapControllers();
 
