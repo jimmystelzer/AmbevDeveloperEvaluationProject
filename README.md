@@ -12,6 +12,7 @@ This project implements a sales management API following the principles of Domai
 - [Project Structure](#project-structure)
 - [Tests](#tests)
 - [Docker](#docker)
+- [Improvements](#Improvements)
 
 ## Used Technologies
 
@@ -231,6 +232,25 @@ docker-compose up -d
 ```bash
 docker exec -it ambev_developer_evaluation_cache redis-cli -a <REDIS_PASSWORD> --scan
 ```
+
+## Improvements
+
+Recent improvements implemented in the project:
+
+- **Security**: Added security headers and authentication with validation.
+- **Rate Limiting**: Enabled rate limiting for API endpoints to prevent abuse.
+- **Cache**: Integrated Redis as a cache system for improved performance.
+- **Logging**: Enhanced logging with correlationId and performance metrics.
+- **Configuration**: Introduced a ConfigurationManager for centralized settings management.
+- **Database Optimization**: Added new indexes to optimize queries.
+- **Testing**:
+  - Increased unit test coverage for sales, users, authentication, and specifications.
+  - Improved functional tests with robust fixtures.
+  - Added robust high load and simple load tests.
+- **Bug Fixes**:
+  - Fixed response encapsulation and proper response for sales deletion.
+  - Resolved API mapping issues and build warnings.
+  - Updated mismatched dependency versions.
 
 ## Docs
 
