@@ -98,6 +98,7 @@ public class Program
             app.UseMiddleware<CorrelationIdMiddleware>();
             app.UseMiddleware<PerformanceMiddleware>();
             app.UseMiddleware<ValidationExceptionMiddleware>();
+            app.UseMiddleware<SecurityMiddleware>();
 
             if (app.Environment.IsDevelopment())
             {
