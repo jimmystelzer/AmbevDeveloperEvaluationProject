@@ -60,6 +60,8 @@ public static class LoggingExtension
                 .Enrich.WithMachineName()
                 .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
                 .Enrich.WithProperty("Application", builder.Environment.ApplicationName)
+                .Enrich.WithProperty("Password", "********")
+                .Enrich.WithProperty("Token", "********")
                 .Enrich.FromLogContext()
                 .Enrich.WithExceptionDetails(_destructuringOptionsBuilder)
                 .Filter.ByExcluding(_filterPredicate);
@@ -67,19 +69,19 @@ public static class LoggingExtension
             if (Debugger.IsAttached)
             {
                 loggerConfiguration.Enrich.WithProperty("DebuggerAttached", Debugger.IsAttached);
-                loggerConfiguration.WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}", theme: SystemConsoleTheme.Colored);
+                loggerConfiguration.WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [CorrId:{CorrelationId}] [{SourceContext}] {Message:lj}{NewLine}{Exception}", theme: SystemConsoleTheme.Colored);
             }
             else
             {
                 loggerConfiguration
                     .WriteTo.Console
                     (
-                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}"
+                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [CorrId:{CorrelationId}] {SourceContext} {Message:lj}{NewLine}{Exception}"
                     )
                     .WriteTo.File(
                         "logs/log-.txt",
                         rollingInterval: RollingInterval.Day,
-                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}"
+                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [CorrId:{CorrelationId}] {SourceContext} {Message:lj}{NewLine}{Exception}"
                     );
             }
         });

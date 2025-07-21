@@ -5,6 +5,7 @@ using Ambev.DeveloperEvaluation.Domain.Services;
 using Ambev.DeveloperEvaluation.Domain.Specifications;
 using Ambev.DeveloperEvaluation.Domain.Specifications.Sales;
 using Ambev.DeveloperEvaluation.Unit.Domain.Entities.TestData;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
 
@@ -16,13 +17,15 @@ public class SaleServiceTests
     private readonly ISaleRepository _saleRepository;
     private readonly IEventService _eventService;
     private readonly SaleService _saleService;
+    private readonly ILogger<SaleService> _logger;
 
     public SaleServiceTests()
     {
         _discountService = Substitute.For<ISaleDiscountService>();
         _saleRepository = Substitute.For<ISaleRepository>();
         _eventService = Substitute.For<IEventService>();
-        _saleService = new SaleService(_discountService, _saleRepository, _eventService);
+        _logger = Substitute.For<ILogger<SaleService>>();
+        _saleService = new SaleService(_discountService, _saleRepository, _eventService, _logger);
     }
 
     [Fact]
@@ -30,16 +33,16 @@ public class SaleServiceTests
     {
         // Arrange
         _discountService.IsValidQuantity(Arg.Any<int>()).Returns(true);
-        
+
         var saleId = Guid.NewGuid();
         var productId = Guid.NewGuid();
         var productName = "Test Product";
         var quantity = 5;
         var unitPrice = 10.0m;
-        
+
         // Act
         var result = _saleService.CreateSaleItem(saleId, productId, productName, quantity, unitPrice);
-        
+
         // Assert
         Assert.NotNull(result);
         Assert.Equal(saleId, result.SaleId);
@@ -54,15 +57,15 @@ public class SaleServiceTests
     {
         // Arrange
         _discountService.IsValidQuantity(Arg.Any<int>()).Returns(false);
-        
+
         var saleId = Guid.NewGuid();
         var productId = Guid.NewGuid();
         var productName = "Test Product";
         var quantity = 21; // Invalid quantity
         var unitPrice = 10.0m;
-        
+
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => 
+        Assert.Throws<ArgumentException>(() =>
             _saleService.CreateSaleItem(saleId, productId, productName, quantity, unitPrice));
     }
 
@@ -71,19 +74,19 @@ public class SaleServiceTests
     {
         // Arrange
         var sale = SaleTestData.GenerateSaleWithItems(3);
-        
+
         _discountService.CalculateDiscount(Arg.Any<int>(), Arg.Any<decimal>())
             .Returns(10.0m); // Mock a fixed discount
-            
+
         // Act
         _saleService.ApplyDiscounts(sale);
-        
+
         // Assert
         foreach (var item in sale.Items)
         {
             Assert.Equal(10.0m, item.Discount);
         }
-        
+
         // Verify discount service was called for each item
         _discountService.Received(3).CalculateDiscount(Arg.Any<int>(), Arg.Any<decimal>());
     }
@@ -95,10 +98,10 @@ public class SaleServiceTests
         var sale = SaleTestData.GenerateValidSale();
         sale.AddItem(SaleTestData.GenerateValidSaleItem());
         _saleRepository.CreateAsync(sale).Returns(sale);
-        
+
         // Act
         var result = await _saleService.CreateSaleAsync(sale);
-        
+
         // Assert
         Assert.Equal(sale, result);
         await _saleRepository.Received(1).CreateAsync(sale);
@@ -111,13 +114,13 @@ public class SaleServiceTests
         // Arrange
         var sale = SaleTestData.GenerateValidSale();
         var saleId = sale.Id;
-        
+
         _saleRepository.GetByIdAsync(saleId).Returns(sale);
         _saleRepository.UpdateAsync(Arg.Any<Sale>()).Returns(sale);
-        
+
         // Act
         var result = await _saleService.DeleteSaleAsync(saleId);
-        
+
         // Assert
         Assert.True(result);
         await _saleRepository.Received(1).GetByIdAsync(saleId);
@@ -131,10 +134,10 @@ public class SaleServiceTests
         // Arrange
         var saleId = Guid.NewGuid();
         _saleRepository.GetByIdAsync(saleId).Returns((Sale?)null);
-        
+
         // Act
         var result = await _saleService.DeleteSaleAsync(saleId);
-        
+
         // Assert
         Assert.False(result);
         await _saleRepository.Received(1).GetByIdAsync(saleId);
@@ -148,13 +151,13 @@ public class SaleServiceTests
         // Arrange
         var sale = SaleTestData.GenerateCancelledSale();
         var saleId = sale.Id;
-        
+
         _saleRepository.GetByIdAsync(saleId).Returns(sale);
-        
+
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _saleService.DeleteSaleAsync(saleId));
-        
+
         await _saleRepository.Received(1).GetByIdAsync(saleId);
         await _saleRepository.DidNotReceive().UpdateAsync(Arg.Any<Sale>());
         await _eventService.DidNotReceive().PublishAsync(Arg.Any<SaleCancelledEvent>());
