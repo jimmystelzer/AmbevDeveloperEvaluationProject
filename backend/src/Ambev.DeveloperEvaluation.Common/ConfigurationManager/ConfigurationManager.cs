@@ -9,8 +9,9 @@ public static class ConfigurationManager
     {
         AppSetting = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json")
-            .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
+            .AddJsonFile("appsettings.overrides.json", optional: true, reloadOnChange: true)
             .Build();
     }
 }

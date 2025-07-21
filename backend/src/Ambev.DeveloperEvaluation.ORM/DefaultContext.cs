@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 using System.Reflection;
-using ConfigurationManager = Ambev.DeveloperEvaluation.Common.ConfigurationManager;
 
 namespace Ambev.DeveloperEvaluation.ORM;
 
@@ -27,8 +26,13 @@ public class YourDbContextFactory : IDesignTimeDbContextFactory<DefaultContext>
 {
     public DefaultContext CreateDbContext(string[] args)
     {
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json")
+            .Build();
+
         var builder = new DbContextOptionsBuilder<DefaultContext>();
-        var connectionString = ConfigurationManager.AppSetting.GetConnectionString("DefaultConnection");
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
 
         builder.UseNpgsql(
                connectionString,

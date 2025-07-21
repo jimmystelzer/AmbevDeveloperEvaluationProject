@@ -10,30 +10,34 @@ public class CreateSaleHandler : IRequestHandler<CreateSaleCommand, CreateSaleRe
 {
     private readonly ISaleService _saleService;
     private readonly IMapper _mapper;
-    
+    private readonly ICacheService _cacheService;
+
     public CreateSaleHandler(
         ISaleService saleService,
-        IMapper mapper)
+        IMapper mapper,
+        ICacheService cacheService
+    )
     {
         _saleService = saleService;
         _mapper = mapper;
+        _cacheService = cacheService;
     }
-    
+
     public async Task<CreateSaleResult> Handle(CreateSaleCommand command, CancellationToken cancellationToken)
     {
         var validator = new CreateSaleCommandValidator();
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
-        
+
         if (!validationResult.IsValid)
             throw new ValidationException(validationResult.Errors);
-            
+
         if (string.IsNullOrEmpty(command.SaleNumber))
         {
             command.SaleNumber = $"SALE-{DateTime.Now:yyyyMMdd}-{Guid.NewGuid().ToString().Substring(0, 8)}";
         }
-        
+
         var saleId = Guid.NewGuid();
-        
+
         var sale = new Sale(
             saleId,
             command.SaleNumber,
@@ -43,7 +47,7 @@ public class CreateSaleHandler : IRequestHandler<CreateSaleCommand, CreateSaleRe
             command.BranchId,
             command.BranchName
         );
-        
+
         foreach (var itemCommand in command.Items)
         {
             var item = _saleService.CreateSaleItem(
@@ -53,12 +57,14 @@ public class CreateSaleHandler : IRequestHandler<CreateSaleCommand, CreateSaleRe
                 itemCommand.Quantity,
                 itemCommand.UnitPrice
             );
-            
+
             sale.AddItem(item);
         }
-        
+
         var createdSale = await _saleService.CreateSaleAsync(sale, cancellationToken);
-        
+
+        // Invalidate cache for sales list
+        await _cacheService.RemoveListAsync("GetSales");
         return _mapper.Map<CreateSaleResult>(createdSale);
     }
 }

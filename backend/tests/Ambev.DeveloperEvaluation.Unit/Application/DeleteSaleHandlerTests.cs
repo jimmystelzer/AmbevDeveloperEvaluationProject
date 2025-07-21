@@ -10,11 +10,13 @@ public class DeleteSaleHandlerTests
 {
     private readonly ISaleService _saleService;
     private readonly DeleteSaleHandler _handler;
+    private readonly ICacheService _cacheService;
 
     public DeleteSaleHandlerTests()
     {
         _saleService = Substitute.For<ISaleService>();
-        _handler = new DeleteSaleHandler(_saleService);
+        _cacheService = Substitute.For<ICacheService>();
+        _handler = new DeleteSaleHandler(_saleService, _cacheService);
     }
 
     [Fact]

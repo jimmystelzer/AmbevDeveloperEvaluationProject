@@ -37,6 +37,7 @@ This project implements a sales management API following the principles of Domai
 The project follows a layered architecture based on Domain-Driven Design (DDD) with CQRS (Command Query Responsibility Segregation):
 
 1. **Domain**:
+
    - Business entities (Sale, SaleItem)
    - Repository interfaces
    - Domain events
@@ -44,13 +45,15 @@ The project follows a layered architecture based on Domain-Driven Design (DDD) w
    - Domain services
 
 2. **Application**:
+
    - Commands and queries (CQRS)
    - Handlers for processing commands
-   - Response DTOs 
+   - Response DTOs
 
 3. **Infrastructure**:
+
    - Repository implementations
-   - Entity Framework configurations 
+   - Entity Framework configurations
    - Implementations of external services
 
 4. **WebApi**:
@@ -64,10 +67,12 @@ The project follows a layered architecture based on Domain-Driven Design (DDD) w
 The system implements the following rules for sales:
 
 1. **Quantity Discounts**:
+
    - 4 or more identical items: 10% discount
    - 10 to 20 identical items: 20% discount
 
 2. **Restrictions**:
+
    - It is not possible to sell more than 20 identical items
    - Purchases with fewer than 4 items do not receive a discount
 
@@ -87,12 +92,14 @@ The system implements the following rules for sales:
 ### First Run
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/renankcb/SalesCRUD.git
    cd ambev-developer-evaluation
    ```
 
 2. Run with Docker Compose:
+
    ```bash
    docker-compose up -d
    ```
@@ -106,11 +113,13 @@ The system implements the following rules for sales:
 To run the project locally:
 
 1. Restore packages:
+
    ```bash
    dotnet restore
    ```
 
 2. Apply database migrations:
+
    ```bash
    dotnet ef database update --project src/Ambev.DeveloperEvaluation.ORM
    ```
@@ -125,20 +134,24 @@ To run the project locally:
 ### Sales
 
 - **GET /api/sales**
+
   - Lists all sales (paginated)
   - Parameters: page, pageSize
   - Response: Paginated list of sales
 
 - **GET /api/sales/{id}**
+
   - Retrieves details of a specific sale
   - Response: Details of the sale with items
 
 - **POST /api/sales**
+
   - Creates a new sale
   - Body: Sale data and items
   - Response: Created sale with applied discount
 
 - **PUT /api/sales/{id}**
+
   - Updates an existing sale
   - Body: Updated sale data
   - Response: Updated sale
@@ -211,6 +224,12 @@ To recreate the containers (e.g., after changes):
 docker-compose down
 docker-compose build
 docker-compose up -d
+```
+
+### How to checking dockerized redis cache list
+
+```bash
+docker exec -it ambev_developer_evaluation_cache redis-cli -a <REDIS_PASSWORD> --scan
 ```
 
 ## Docs

@@ -2,6 +2,7 @@ using Ambev.DeveloperEvaluation.ORM;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -23,6 +24,14 @@ public class CustomWebApplicationFactory<TProgram> : WebApplicationFactory<TProg
             {
                 options.UseInMemoryDatabase("InMemoryDbForTesting");
             });
+
+            var redisDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IDistributedCache));
+            if (redisDescriptor != null)
+            {
+                services.Remove(redisDescriptor);
+            }
+
+            services.AddDistributedMemoryCache();
 
             var serviceProvider = services.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();

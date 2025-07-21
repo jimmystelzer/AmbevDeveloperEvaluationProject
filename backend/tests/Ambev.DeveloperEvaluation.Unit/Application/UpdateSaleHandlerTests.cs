@@ -15,12 +15,14 @@ public class UpdateSaleHandlerTests
     private readonly ISaleService _saleService;
     private readonly IMapper _mapper;
     private readonly UpdateSaleHandler _handler;
+    private readonly ICacheService _cacheService;
 
     public UpdateSaleHandlerTests()
     {
         _saleService = Substitute.For<ISaleService>();
         _mapper = Substitute.For<IMapper>();
-        _handler = new UpdateSaleHandler(_saleService, _mapper);
+        _cacheService = Substitute.For<ICacheService>();
+        _handler = new UpdateSaleHandler(_saleService, _mapper, _cacheService);
     }
 
     [Fact]
@@ -57,7 +59,7 @@ public class UpdateSaleHandlerTests
         };
 
         _saleService.GetSaleByIdAsync(saleId, Arg.Any<CancellationToken>()).Returns(existingSale);
-        
+
         // Setup item creation
         foreach (var itemCommand in command.Items)
         {

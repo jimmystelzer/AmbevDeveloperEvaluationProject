@@ -14,12 +14,14 @@ public class CreateSaleHandlerTests
     private readonly ISaleService _saleService;
     private readonly IMapper _mapper;
     private readonly CreateSaleHandler _handler;
+    private readonly ICacheService _cacheService;
 
     public CreateSaleHandlerTests()
     {
         _saleService = Substitute.For<ISaleService>();
         _mapper = Substitute.For<IMapper>();
-        _handler = new CreateSaleHandler(_saleService, _mapper);
+        _cacheService = Substitute.For<ICacheService>();
+        _handler = new CreateSaleHandler(_saleService, _mapper, _cacheService);
     }
 
     [Fact]
