@@ -1,4 +1,3 @@
-using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Domain.Enums;
 using Ambev.DeveloperEvaluation.ORM;
 using Ambev.DeveloperEvaluation.WebApi;
@@ -12,11 +11,13 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Xunit;
+using NBomber.Contracts;
+using NBomber.CSharp;
+using NBomber.Http.CSharp;
 
 namespace Ambev.DeveloperEvaluation.Functional.Controllers;
 
@@ -440,7 +441,9 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         Assert.Equal(2, responseData.Data?.Count());
         Assert.True(responseData.TotalCount >= 3);
     }
+    #endregion
 
+    #region Load Tests
     [Fact(DisplayName = "LOAD /api/Sales should handle concurrent requests")]
     public async Task SimpleLoadTest_ShouldHandleConcurrentRequests()
     {
@@ -465,6 +468,60 @@ public class SalesControllerTests : IClassFixture<CustomWebApplicationFactory<Pr
         }
 
         await Task.WhenAll(tasks);
+    }
+
+    [Fact(DisplayName = "LOAD /api/Sales should handle high load")]
+    public async Task HighLoadTest_ShouldHandleHighLoad()
+    {
+        // Arrange - Create several sales
+        for (int i = 0; i < 20; i++)
+        {
+            await CreateTestSaleAsync();
+        }
+
+        var scenario = Scenario.Create("HighLoadTest", async context =>
+        {
+            var request =
+                Http.CreateRequest("GET", "api/Sales?page=1&pageSize=10")
+                    .WithHeader("Content-Type", "application/json");
+
+            var response = await Http.Send(_client, request);
+
+            return response;
+        })
+        .WithoutWarmUp()
+        .WithLoadSimulations(
+            Simulation.Inject(rate: 10, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30))
+        );
+
+        var result = NBomberRunner
+            .RegisterScenarios(scenario)
+            .Run();
+
+        var scnStats = result.ScenarioStats.Find("HighLoadTest");
+        Assert.NotNull(scnStats);
+
+        Assert.True(result.AllBytes > 0);
+        Assert.True(result.AllRequestCount > 0);
+        Assert.True(result.AllOkCount > 0);
+        Assert.True(result.AllFailCount == 0);
+
+        Assert.True(scnStats.Ok.Request.RPS > 0);
+        Assert.True(scnStats.Ok.Request.Count > 0);
+
+        // success rate 100% of all requests
+        Assert.True(scnStats.Ok.Request.Percent == 100);
+        Assert.True(scnStats.Fail.Request.Percent == 0);
+
+        Assert.True(scnStats.Ok.Latency.MinMs > 0);
+        Assert.True(scnStats.Ok.Latency.MaxMs > 0);
+
+        Assert.True(scnStats.Fail.Request.Count == 0);
+        Assert.True(scnStats.Fail.Latency.MinMs == 0);
+
+        Assert.True(scnStats.Ok.Latency.Percent50 > 0);
+        Assert.True(scnStats.Ok.Latency.Percent75 > 0);
+        Assert.True(scnStats.Ok.Latency.Percent99 > 0);
     }
     #endregion
 
